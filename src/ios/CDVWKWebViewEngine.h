@@ -20,8 +20,12 @@
 #import <WebKit/WebKit.h>
 #import <Cordova/CDV.h>
 
-@interface CDVWKWebViewEngine : CDVPlugin <CDVWebViewEngineProtocol, WKScriptMessageHandler, WKNavigationDelegate>
+@interface AlphaPassUIWebView : WKWebView
+- (UIColor *) colorOfPoint:(CGPoint)point withLayer:(CALayer*)layer;
+@property(nonatomic,getter=isAlphaPassEnabled) BOOL alphaPassEnabled;
+@end
 
+@interface CDVWKWebViewEngine : CDVPlugin <CDVWebViewEngineProtocol, WKScriptMessageHandler, WKNavigationDelegate>
 @property (nonatomic, strong, readonly) id <WKUIDelegate> uiDelegate;
 
 @end

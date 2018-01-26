@@ -32,6 +32,65 @@
 #define CDV_BRIDGE_NAME @"cordova"
 #define CDV_IONIC_STOP_SCROLL @"stopScroll"
 
+
+@implementation AlphaPassUIWebView
+
+- (UIColor *) colorOfPoint:(CGPoint)point withLayer:(CALayer*)layer
+{
+    unsigned char pixel[4] = {0};
+    
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    
+    CGContextRef context = CGBitmapContextCreate(pixel, 1, 1, 8, 4, colorSpace, kCGBitmapAlphaInfoMask & kCGImageAlphaPremultipliedLast);
+    
+    CGContextTranslateCTM(context, -point.x, -point.y);
+    
+    [layer renderInContext:context];
+    
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
+    
+    UIColor *color = [UIColor colorWithRed:pixel[0]/255.0 green:pixel[1]/255.0 blue:pixel[2]/255.0 alpha:pixel[3]/255.0];
+    
+    return color;
+}
+
+- (BOOL)isTransparent:(UIImage *)image xCoordinate:(int)x yCoordinate:(int)y {
+    // assume im is a UIImage, point is the CGPoint to test
+    unsigned char pixel[1] = {0};
+    CGContextRef context = CGBitmapContextCreate(pixel,
+                                                 1, 1, 8, 1, NULL,
+                                                 kCGImageAlphaOnly);
+    UIGraphicsPushContext(context);
+    [image drawAtPoint:CGPointMake(-x, -y)];
+    UIGraphicsPopContext();
+    CGContextRelease(context);
+    CGFloat alpha = pixel[0]/255.0;
+    BOOL transparent = alpha < 0.01;
+    return transparent;
+}
+
+-(BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
+{
+    if (_alphaPassEnabled)
+    {
+        UIGraphicsBeginImageContextWithOptions(self.bounds.size, false, 0);
+        [self drawViewHierarchyInRect:self.bounds afterScreenUpdates:NO];
+        UIImage * snapshotImage = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+        
+        BOOL pass = [self isTransparent:snapshotImage xCoordinate:point.x yCoordinate:point.y];
+        if(pass)
+        {
+          return NO;
+        }
+    }
+    
+    return YES;
+}
+
+@end
+
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
 
 @implementation UIScrollView (BugIOS11)
@@ -205,7 +264,7 @@
     configuration.userContentController = userContentController;
 
     // re-create WKWebView, since we need to update configuration
-    WKWebView* wkWebView = [[WKWebView alloc] initWithFrame:self.frame configuration:configuration];
+    AlphaPassUIWebView* wkWebView = [[AlphaPassUIWebView alloc] initWithFrame:self.frame configuration:configuration];
 
     #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
     if (@available(iOS 11.0, *)) {
